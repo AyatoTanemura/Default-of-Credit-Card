@@ -4,12 +4,19 @@
 library(s20x)
 library(tidyverse)
 library(here)
+library(ggpubr)
+
+
 
 # Dataload ----
 # df <- read.csv("Data/UCI_Credit_Card.csv", head = T)
 
-df <- read_csv("Data/UCI_Credit_Card.csv")
+df <- read_csv("Data/UCI_Credit_Card.csv") %>% 
+  mutate(SEX = factor(SEX),
+         EDUCATION = factor(EDUCATION),
+         MARRIAGE = factor(MARRIAGE))
 
+head(df)
 df.edit <- read_csv("Data/UCI_Credit_Card.csv") %>% 
   mutate(SEX = factor(SEX),
          EDUCATION = factor(EDUCATION),
@@ -47,8 +54,26 @@ df.edit <- read_csv("Data/UCI_Credit_Card.csv") %>%
                               TRUE ~ '81~',
                               ),
         AGEGROUP = factor(AGEGROUP)
-        )
+        
+        ) %>% 
+  mutate(default = factor(default.payment.next.month,levels = c("no default","default")))
 
+df.edit2 <- df.edit %>% 
+  mutate(
+          Def_AMT = case_when(
+                              PAY_0 == 1 ~ BILL_AMT1/LIMIT_BAL,
+                              PAY_2 == 1 ~ BILL_AMT2/LIMIT_BAL,
+                              PAY_3 == 1 ~ BILL_AMT3/LIMIT_BAL,
+                              PAY_4 == 1 ~ BILL_AMT4/LIMIT_BAL,
+                              PAY_5 == 1 ~ BILL_AMT5/LIMIT_BAL,
+                              PAY_6 == 1 ~ BILL_AMT6/LIMIT_BAL,
+                              TRUE ~ 'NA'
+                              )
+          )
+
+# Checking data
+
+df.edit$default
 
 names(df.edit)
 
@@ -150,9 +175,15 @@ count(df.edit, LIMIT_BAL, AGE, SEX, MARRIAGE, default.payment.next.month, AGEGRO
   ggplot(.) +
   geom_boxplot(aes(x = default.payment.next.month, y = LIMIT_BAL)) 
 
+count(df.edit, LIMIT_BAL, AGE, SEX, MARRIAGE, default.payment.next.month, AGEGROUP) %>% 
+  ggplot(.) +
+  geom_boxplot(aes(x = default.payment.next.month, y = AGE))
+
 ## Assumption Check----
 
 default.fit <- lm(LIMIT_BAL ~ default.payment.next.month, data = df.edit)
+default.fit <- lm(log(LIMIT_BAL) ~ default.payment.next.month, data = df.edit)
+default.fit <- lm(log(LIMIT_BAL) ~ default, data = df.edit)
 
 ### EOV assumption----
 
@@ -160,7 +191,8 @@ plot(default.fit, which = 1)
 
 ### normality assumption----
 
-normcheck(default.fit)
+normcheck(default.fit, shapiro.wilk = TRUE)
+?normcheck()
 
 ### Unduly influential point----
 
@@ -177,6 +209,64 @@ summary1way(default.fit, draw.plot = FALSE)
 ### summary----
 
 summary(default.fit)
+
+multipleComp(default.fit)
+exp(multipleComp(default.fit))
+
+
+df.edit %>%
+  filter(default == "default") %>%
+  select(LIMIT_BAL) %>% 
+  mean()
+
+mean(df.edit$LIMIT_BAL)
+
+df.edit %>% 
+  group_by(default) %>% 
+  summarise(Average = mean(log(LIMIT_BAL)))
+
+### principal components analysis----
+
+
+
+# Logistic Regression ----
+# reference p218
+
+default.tbl <- xtabs(default.payment.next.month ~ LIMIT_BAL + SEX, data = df)
+default.tbl
+
+# Creating a model
+
+def.fit <- glm(default.payment.next.month ~ LIMIT_BAL * SEX, family = binomial, data = df)
+
+plot(def.fit, which = 1, lty = 2)
+
+summary(def.fit)
+
+anova(def.fit, test = 'Chisq')
+
+# Removing the interaction
+
+def.fit1 <- glm(default.payment.next.month ~ LIMIT_BAL + SEX, family = binomial, data = df)
+
+anova(def.fit1, test = 'Chisq')
+
+summary(def.fit1)
+
+coef(def.fit1)
+
+exp(coef(def.fit1))
+
+def.ci1 <- confint(def.fit1)
+
+exp(def.ci1)
+
+def.logit.pred <- predict(def.fit1, newdata = data.frame(LIMIT_BAL = df$LIMIT_BAL))
+
+
+
+# Create a new column----
+
 
 
 
