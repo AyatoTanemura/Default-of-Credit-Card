@@ -14,7 +14,8 @@ library(ggpubr)
 df <- read_csv("Data/UCI_Credit_Card.csv") %>% 
   mutate(SEX = factor(SEX),
          EDUCATION = factor(EDUCATION),
-         MARRIAGE = factor(MARRIAGE))
+         MARRIAGE = factor(MARRIAGE),
+         default.payment.next.month = factor(default.payment.next.month))
 
 head(df)
 df.edit <- read_csv("Data/UCI_Credit_Card.csv") %>% 
@@ -77,6 +78,8 @@ df.edit$default
 
 names(df.edit)
 
+dim(df)
+
 # Data Transform using base R
 df$SEX <- factor(df$SEX)
 str(df)
@@ -85,7 +88,7 @@ str(df)
 class(df)
 class(read.csv("Data/UCI_Credit_Card.csv", header = T))
 
-# SUmmary----
+# Summary----
 summary(df)
 dim(df)
 nrow(df)
@@ -264,19 +267,32 @@ exp(def.ci1)
 def.logit.pred <- predict(def.fit1, newdata = data.frame(LIMIT_BAL = df$LIMIT_BAL))
 
 
+#Create Test data----
+set.seed(12)
+Train <- df[sample(nrow(df), nrow(df)*0.9),]
+Train
 
-# Create a new column----
+# Analysis ----
 
+paste(names(df[, c(1, ncol(df))]), collapse = '+')
 
+glm(default.payment.next.month ~., data = df[,-1]) %>% 
+  summary()
 
+pay0.fit <- data.frame(table(df$default.payment.next.month, df$PAY_0))
 
+ggplot(data = pay0.fit) +
+  geom_col(aes(x = Var2, y = Freq, fill = Var1))+
+  facet_wrap(~ Var1, ncol = 1)
 
+model <- glm(default.payment.next.month ~ LIMIT_BAL + SEX + MARRIAGE + AGE + 
+        PAY_0 + BILL_AMT1 + PAY_AMT1, data = df[,-1], family = "binomial") 
+summary(model)
 
+df$Pred <- ifelse(predict(model, type = "response")> 0.5, "Positive", "Negative")
+table(df$default.payment.next.month, df$Pred)
 
-
-
-
-
+# https://bradzzz.gitbooks.io/ga-dsi-seattle/content/dsi/dsi_05_classification_databases/2.1-lesson/assets/datasets/DefaultCreditCardClients_yeh_2009.pdf
 
 
 
