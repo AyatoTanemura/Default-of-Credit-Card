@@ -295,9 +295,18 @@ table(df$default.payment.next.month, df$Pred)
 # https://bradzzz.gitbooks.io/ga-dsi-seattle/content/dsi/dsi_05_classification_databases/2.1-lesson/assets/datasets/DefaultCreditCardClients_yeh_2009.pdf
 
 
+# Bayes Platform ----
+# https://mc-stan.org/docs/2_18/stan-users-guide/the-difficulty-of-bayesian-inference-for-clustering.html
 
+# model exapmle----
+# https://www.linkedin.com/pulse/predicting-credit-card-non-payment-machine-learning-celeste-mccracken/
 
+# Refer diabetes data
 
+data("PimaIndiansDiabetes2", package = "mlbench")
+pima.data <- na.omit(PimaIndiansDiabetes2)
+
+pairs20x(pima.data)
 
 
 

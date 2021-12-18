@@ -8,14 +8,16 @@ library(tidymodels) # for the rsample package, along with the rest of tidymodels
 library(modeldata) # for the cells data
 library(MASS)
 library(pROC)
+library(caret)
+library(nnet)
 
 # Data upload----
 
 df <- read_csv("Data/UCI_Credit_Card.csv") %>% 
   mutate(SEX = factor(SEX),
          EDUCATION = factor(EDUCATION),
-         MARRIAGE = factor(MARRIAGE))#,
-         #default.payment.next.month = factor(default.payment.next.month))
+         MARRIAGE = factor(MARRIAGE),
+         default.payment.next.month = factor(default.payment.next.month))
 
 # Data Check----
 
@@ -44,7 +46,11 @@ glm(default.payment.next.month ~., data = df[,-1]) %>%
 
 model <- glm(default.payment.next.month ~ LIMIT_BAL + SEX + MARRIAGE + AGE + 
                PAY_0 + BILL_AMT1 + PAY_AMT1, data = df[,-1], family = "binomial") 
+
 summary(model)
+
+pairs20x(model)
+
 
 df$Pred <- ifelse(predict(model, type = "response")> 0.8, "Positive", "Negative")
 
@@ -91,7 +97,7 @@ table(observed.classes, predicted.classes) %>%
 
 ## Precision, Recall and Specificity----
 
-confusionMatrix(predicted.classes, observed.classes)
+caret::confusionMatrix(predicted.classes, observed.classes)
 
 # ROC curve----
 
@@ -114,15 +120,31 @@ roc.data %>% filter(specificity >= 0.6)
 plot.roc(res.roc, print.auc = TRUE, print.thres = 'best')
 
 
+# logistic regression model----
+# confusion matrix
 
+df$Pred <- ifelse(predict(model, type = "response")> 0.5, "1", "0")
+df <- df %>% mutate(Pred = factor(Pred))
 
+A <- table(df$default.payment.next.month, df$Pred)
 
+confusionMatrix(df$default.payment.next.month, df$Pred)
 
+# accuracy
+ accuracy <- (A[1]+A[4])/sum(A)
+accuracy
 
+# nnet model----
+# train & test
 
+set.seed(123)
+sub <- sample(nrow(df), floor(nrow(df)*0.75))
+df <- df[,-26]
+df_train <- df[sub, ]
+df_test <- df[-sub, ]
 
-
-
+df_NN <- nnet(default.payment.next.month ~., data=df_train, size=5, decay=0.01, maxit=1000)
+confusionMatrix(factor(predict(df_NN, df_test[,-c(25)], type="class")), df_test$default.payment.next.month)
 
 
 
